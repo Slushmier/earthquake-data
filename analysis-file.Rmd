@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Adam Armeier"
+date: "6/26/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+library(sf)
+
+earthquakes <- readxl::read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ]
+embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
+  dplyr::filter(target != "US")
+embassies$US <- ifelse(embassies$country == "US", 1, 
+                        ifelse(is.na(embassies$country), 1, 0))
+
+
+embassies %>% dplyr::filter(str_detect(.$name.en, "U.S.") == TRUE)
+```
+
+## Question 1 - Study Design
+
+Please discuss in detail your approach to this analysis.  Study Design may Include how you defined the question, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience. 
+
+Although not feasible for this exercise, the first aspect I would want to clarify is that I am framing the customer's question correctly. The prompt asks to provide a "preliminary analysis of the risk of earthquakes to our overseas missions." I would likely try to communicate with the customer to ensure that I understand their desired output before spending too much time developing a study. For example, do they perceive the risk of earthquakes to simply be a risk of an earthquake event occuring, or does it also need to account for factors such as the capabilities of the host nation to provide  disaster relief support, the ability of the Department of State or other US government support entities to access the mission in an emergy, or the risk of factors like tidal waves that may result from an earthquakes. Given the nature of this prompt, I make the assumpiton that the request is for a straightforward risk of earthquakes for global Department of State missions. 
+
+Given that assumption, I define the research question as "What is the risk of damaging earthquakes to all Department of State overseas missions?" 
+
+I use a spatial approach of analysis to account for variations in the threat level to consulates with a country. For example, analyzing data for the United States would provide a much different earthquake risk when comparing, for example, California to Illinois. The spatial methodology allows for accounting for the variation within varios countries, particularly those with consulates outside of the capital that may have varying risks to eathquakes
+
+```{r cars}
+summary(cars)
+```
+
+## Question 2 - Data Analysis
+
+What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.   
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Question 3 - Communication
+
+Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words. 
+
+## Question 4 - Validation
+
+Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work. 
+
+Validation can be difficult when you are unclear about the tool or methodology that may be used by another analyst.
