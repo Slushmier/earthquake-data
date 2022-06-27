@@ -14,12 +14,38 @@ library(sf)
 
 earthquakes <- readxl::read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ]
 embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
-  dplyr::filter(target != "US")
+  dplyr::filter(target != "US") %>% 
+  select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
+         target, addr.city, addr.housenumber, addr.postcode, name.en)
+#na_count <-sapply(embassies, function(y) sum(length(which(is.na(y)))))
+#na_count <- data.frame(na_count) %>% filter(na_count$na_count < 7000)
+
 embassies$US <- ifelse(embassies$country == "US", 1, 
                         ifelse(is.na(embassies$country), 1, 0))
 
+#embassies %>% dplyr::filter(str_detect(.$name.en, "U.S.") == TRUE)
 
-embassies %>% dplyr::filter(str_detect(.$name.en, "U.S.") == TRUE)
+library(rvest)
+simple <- read_html("https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/list-of-posts.html")
+df <- simple %>% html_nodes("a") %>% html_text() %>% as.data.frame()
+df <- df[64:220,]
+df <- as.character(df)
+df <- df %>% as.data.frame()
+colnames(df) <- c("Text")
+df <- df %>% dplyr::filter(Text != "" & Text != "Back to Top") %>% 
+  mutate(abriviation = str_sub(.$Text, start = -3, end = -1),
+         Text = str_sub(Text, start = 1, end = -7))
+
+pop_places <- st_read("Data\\ne_10m_populated_places_simple\\ne_10m_populated_places_simple.shp") %>% dplyr::filter(sov0name != "United States") %>% 
+  dplyr::filter(featurecla != "Populated place")
+
+sf_df <- left_join(pop_places, df, by = c("name" = "Text")) %>% 
+  dplyr::filter(is.na(abriviation) == FALSE)
+
+`%!in%` <- Negate(`%in%`)
+
+global_grid <- 
+
 ```
 
 ## Question 1 - Study Design
@@ -30,7 +56,7 @@ Although not feasible for this exercise, the first aspect I would want to clarif
 
 Given that assumption, I define the research question as "What is the risk of damaging earthquakes to all Department of State overseas missions?" 
 
-I use a spatial approach of analysis to account for variations in the threat level to consulates with a country. For example, analyzing data for the United States would provide a much different earthquake risk when comparing, for example, California to Illinois. The spatial methodology allows for accounting for the variation within varios countries, particularly those with consulates outside of the capital that may have varying risks to eathquakes
+I use a spatial approach of analysis to account for variations in the threat level to consulates with a country. For example, analyzing data for the United States would provide a much different earthquake risk when comparing, for example, California to Illinois. The spatial methodology allows for accounting for the variation within various countries, particularly those with consulates outside of the capital that may have varying risks to eathquakes. The features in the dataset that are the most complete are the time, the geographic coordinates, the magnitude, and the focal depth
 
 ```{r cars}
 summary(cars)
@@ -39,6 +65,8 @@ summary(cars)
 ## Question 2 - Data Analysis
 
 What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.   
+
+
 
 ```{r pressure, echo=FALSE}
 plot(pressure)
@@ -49,6 +77,8 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 ## Question 3 - Communication
 
 Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words. 
+
+
 
 ## Question 4 - Validation
 
