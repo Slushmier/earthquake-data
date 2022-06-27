@@ -15,16 +15,15 @@ library(sf)
 earthquakes <- read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ] %>% 
   dplyr::filter(is.na(Longitude) == FALSE) %>% 
   st_as_sf(coords = c('Longitude', 'Latitude'), remove = F, crs = 4326)
-embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
-  dplyr::filter(target != "US") %>% 
-  select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
-         target, addr.city, addr.housenumber, addr.postcode, name.en)
+
+#embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
+#  dplyr::filter(target != "US") %>% 
+#  select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
+#         target, addr.city, addr.housenumber, addr.postcode, name.en)
 #na_count <-sapply(embassies, function(y) sum(length(which(is.na(y)))))
 #na_count <- data.frame(na_count) %>% filter(na_count$na_count < 7000)
-
-embassies$US <- ifelse(embassies$country == "US", 1, 
-                        ifelse(is.na(embassies$country), 1, 0))
-
+#embassies$US <- ifelse(embassies$country == "US", 1, 
+#                        ifelse(is.na(embassies$country), 1, 0))
 #embassies %>% dplyr::filter(str_detect(.$name.en, "U.S.") == TRUE)
 
 library(rvest)
@@ -38,31 +37,28 @@ df <- df %>% dplyr::filter(Text != "" & Text != "Back to Top") %>%
   mutate(abriviation = str_sub(.$Text, start = -3, end = -1),
          Text = str_sub(Text, start = 1, end = -7))
 
-pop_places <- st_read("Data\\ne_10m_populated_places_simple\\ne_10m_populated_places_simple.shp") %>% dplyr::filter(sov0name != "United States") %>% 
+pop_places <- st_read("Data\\ne_10m_populated_places_simple\\ne_10m_populated_places_simple.shp", crs=4326) %>%
+  dplyr::filter(sov0name != "United States") %>% 
   dplyr::filter(featurecla != "Populated place")
 
 sf_df <- left_join(pop_places, df, by = c("name" = "Text")) %>% 
   dplyr::filter(is.na(abriviation) == FALSE)
 
-`%!in%` <- Negate(`%in%`)
-
-sf_earthquakes <- st_sf()
-
-sfc_global <- st_sfc(st_polygon(list(rbind(c(-180,-90), c(-180, 90), 
-                                           c(180, 90), c(180, -90),
-                                           c(-180, -90)))))
+sfc_global <- st_bbox(pop_places) %>% st_as_sfc()
 global_grid <- st_make_grid(sfc_global, 5, crs = st_crs(sf_df), square = F)
 global_grid <- st_sf(hexid = 1:length(lengths(global_grid)), global_grid)
-
-hexid <- sapply(st_intersects(x = so_acled, y = so_grid), 
+hexid <- sapply(st_intersects(x = earthquakes, y = global_grid), 
                 function(z) if (length(z)==0) NA_integer_ else z[1])
-so_acled$hexid <- hexid
-so_hexsum <- so_acled %>% group_by(hexid) %>% 
-  summarize(events = n(), fatalities = sum(fatalities)) %>% 
+earthquakes$hexid <- hexid
+earthquake_hexsum <- earthquakes %>% group_by(hexid) %>% 
+  summarize(events = n(), Deaths = sum(Deaths, na.rm = T)) %>% 
   st_set_geometry(NULL)
-so_grid <- left_join(so_grid, so_hexsum) %>% 
-  replace_na(list(events = 0, fatalities = 0))
-  
+quake_grid <- left_join(global_grid, earthquake_hexsum) %>% 
+  replace_na(list(events = 0, Deaths = 0))
+quake_grid <- quake_grid %>% 
+  mutate(risk = log(events + 1) * log(Deaths + 1),
+         risk_lvl = ifelse(risk < 5, 1,
+                           ifelse(risk < 15, 2, 3)))
 ```
 
 ## Question 1 - Study Design
