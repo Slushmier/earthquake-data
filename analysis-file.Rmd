@@ -12,7 +12,9 @@ library(tidyverse)
 library(readxl)
 library(sf)
 
-earthquakes <- readxl::read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ]
+earthquakes <- read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ] %>% 
+  dplyr::filter(is.na(Longitude) == FALSE) %>% 
+  st_as_sf(coords = c('Longitude', 'Latitude'), remove = F, crs = 4326)
 embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
   dplyr::filter(target != "US") %>% 
   select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
@@ -44,8 +46,23 @@ sf_df <- left_join(pop_places, df, by = c("name" = "Text")) %>%
 
 `%!in%` <- Negate(`%in%`)
 
-global_grid <- 
+sf_earthquakes <- st_sf()
 
+sfc_global <- st_sfc(st_polygon(list(rbind(c(-180,-90), c(-180, 90), 
+                                           c(180, 90), c(180, -90),
+                                           c(-180, -90)))))
+global_grid <- st_make_grid(sfc_global, 5, crs = st_crs(sf_df), square = F)
+global_grid <- st_sf(hexid = 1:length(lengths(global_grid)), global_grid)
+
+hexid <- sapply(st_intersects(x = so_acled, y = so_grid), 
+                function(z) if (length(z)==0) NA_integer_ else z[1])
+so_acled$hexid <- hexid
+so_hexsum <- so_acled %>% group_by(hexid) %>% 
+  summarize(events = n(), fatalities = sum(fatalities)) %>% 
+  st_set_geometry(NULL)
+so_grid <- left_join(so_grid, so_hexsum) %>% 
+  replace_na(list(events = 0, fatalities = 0))
+  
 ```
 
 ## Question 1 - Study Design
