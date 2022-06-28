@@ -16,6 +16,8 @@ earthquakes <- read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ] %>%
   dplyr::filter(is.na(Longitude) == FALSE) %>% 
   st_as_sf(coords = c('Longitude', 'Latitude'), remove = F, crs = 4326)
 
+#fault_lines <- st_read("https://raw.githubusercontent.com/GEMScienceTools/gem-global-active-faults/master/geojson/gem_active_faults_harmonized.geojson")
+
 #embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
 #  dplyr::filter(target != "US") %>% 
 #  select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
@@ -65,15 +67,62 @@ quake_grid <- quake_grid %>%
 
 Please discuss in detail your approach to this analysis.  Study Design may Include how you defined the question, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience. 
 
-Although not feasible for this exercise, the first aspect I would want to clarify is that I am framing the customer's question correctly. The prompt asks to provide a "preliminary analysis of the risk of earthquakes to our overseas missions." I would likely try to communicate with the customer to ensure that I understand their desired output before spending too much time developing a study. For example, do they perceive the risk of earthquakes to simply be a risk of an earthquake event occuring, or does it also need to account for factors such as the capabilities of the host nation to provide  disaster relief support, the ability of the Department of State or other US government support entities to access the mission in an emergy, or the risk of factors like tidal waves that may result from an earthquakes. Given the nature of this prompt, I make the assumpiton that the request is for a straightforward risk of earthquakes for global Department of State missions. 
+I defined the question directly from the provided scenario, which asks for 
+a "rapid preliminary analysis of the risk of earthquakes to our overseas
+missions." Therefore, I consider the research questions to be 
+straightforward from the scenario: "What is the risk of earthquakes to 
+State Department overseas missions?" This requires defining a method to
+measure risk of earthquakes and comparing it for each of the State 
+Department's overseas missions. 
 
-Given that assumption, I define the research question as "What is the risk of damaging earthquakes to all Department of State overseas missions?" 
+I choose to use a method that defines the relative, rather than the absolute
+risk for the State Department's missions. My assumption is that this 
+preliminary assessment is to provide decision makers with information on  
+which missions are most at risk, rather than provide a likelihood that a 
+particular mission will be affected by a serious earthquake. To provide an
+absolute risk, I would probably develop a logistical regression 
+model to attempt to quantify the risk based upon a number of factors 
+related to earthquake risk. However, since I know very little about 
+earthquake risk and know that earthquake prediction has not been very 
+succesful, I rely on a straightforward assessment based on the provided 
+earthquake spreadsheet.
 
-I use a spatial approach of analysis to account for variations in the threat level to consulates with a country. For example, analyzing data for the United States would provide a much different earthquake risk when comparing, for example, California to Illinois. The spatial methodology allows for accounting for the variation within various countries, particularly those with consulates outside of the capital that may have varying risks to eathquakes. The features in the dataset that are the most complete are the time, the geographic coordinates, the magnitude, and the focal depth
 
-```{r cars}
-summary(cars)
-```
+Although not feasible for this scenario, I would also try to clarify  
+how the person or organizaiton making the request defines risk. I would 
+likely try to communicate with the customer to ensure that I understand 
+their desired output. For example, do they perceive the risk of earthquakes 
+to simply be a risk of an earthquake event occuring, or does it also need 
+to account for factors such as the capabilities of a host nation to provide 
+disaster relief support, the ability of the Department of State or other US 
+government support entities to access the mission in an emergency, or the 
+risk of factors like tidal waves that may result from an earthquakes. I 
+also looked at the Joint Strategic Plan for guidance on the type of risk 
+assessement mentioned. Given the text from the prompt and Performance Goal 
+4.3.4 to "protect personnel through advanced building" I assume the goal is
+to prioritize which missions are most at risk and may need to be rebuilt or
+reinforced in order to protect the personnel stationed there. Hence, I use
+a relative risk assessment.
+
+I use a spatial approach of analysis to account for variations in the 
+threat level to consulates within counties where the State Department may 
+have multiple consulates. For example, analyzing data for the United States 
+would provide a much different earthquake risk when comparing, for example, 
+California to Illinois. The spatial methodology allows for accounting for 
+the variation within various countries, particularly those with consulates 
+outside of the capital that may have varying risks to eathquakes. The 
+features in the dataset that are the most complete are the time, the 
+geographic coordinates, the magnitude, and the focal depth
+
+Part of the reason I use a simple index is to ensure that the results are
+easily explicable to a senior policymaker, particularly if they are 
+presented as one simple graphic. Since the prompt suggests the Secretary is
+requesting assessments about multiple natural disasters, I assume that there
+is limited time to discuss the results and the methods that went into them.
+
+I chose to do my analysis in R rather than a traditional geospatial tool 
+like ArcGIS or QGIS in order to ensure that any team mates would be able to
+easily access and review the analysis.
 
 ## Question 2 - Data Analysis
 
@@ -85,8 +134,6 @@ What are key findings found in your analysis? Which embassies are most at risk? 
 ggplot()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
 ## Question 3 - Communication
 
 Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words. 
@@ -97,4 +144,7 @@ Please describe in detail how you would communicate your results to a diverse, n
 
 Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work. 
 
-Validation can be difficult when you are unclear about the tool or methodology that may be used by another analyst.
+Validation can be difficult when you are unclear about the tool or 
+methodology that may be used by another analyst. I choose to put my analysis
+on GitHub (https://github.com/Slushmier/earthquake-data) so that anyone 
+reviewing the 
