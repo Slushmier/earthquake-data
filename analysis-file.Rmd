@@ -82,7 +82,7 @@ What are key findings found in your analysis? Which embassies are most at risk? 
 
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+ggplot()
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
