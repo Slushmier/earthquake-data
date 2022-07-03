@@ -1,8 +1,10 @@
 ---
-title: "Untitled"
+title: "Writen Assignment Answers"
 author: "Adam Armeier"
 date: "6/26/2022"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,61 +13,102 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
 library(sf)
+library(spdep)
+library(rvest)
+library(knitr)
 
 earthquakes <- read_xlsx("Data\\Data Set - Earthquakes.xlsx")[-1, ] %>% 
   dplyr::filter(is.na(Longitude) == FALSE) %>% 
   st_as_sf(coords = c('Longitude', 'Latitude'), remove = F, crs = 4326)
 
+countries <- st_read("Data\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp", crs = 4326)
+
+# Output file from embassy_scrape.R
+embassies <- read_csv("Data\\embassies_consulates.csv")
+
 #fault_lines <- st_read("https://raw.githubusercontent.com/GEMScienceTools/gem-global-active-faults/master/geojson/gem_active_faults_harmonized.geojson")
 
-#embassies <- sf::read_sf("Data\\embassies.geojson") %>% 
-#  dplyr::filter(target != "US") %>% 
-#  select(id, X.id, country, diplomatic, embassy, name, name.fr, office,
-#         target, addr.city, addr.housenumber, addr.postcode, name.en)
-#na_count <-sapply(embassies, function(y) sum(length(which(is.na(y)))))
-#na_count <- data.frame(na_count) %>% filter(na_count$na_count < 7000)
-#embassies$US <- ifelse(embassies$country == "US", 1, 
-#                        ifelse(is.na(embassies$country), 1, 0))
-#embassies %>% dplyr::filter(str_detect(.$name.en, "U.S.") == TRUE)
-
-library(rvest)
-simple <- read_html("https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/list-of-posts.html")
-df <- simple %>% html_nodes("a") %>% html_text() %>% as.data.frame()
-df <- df[64:220,]
-df <- as.character(df)
-df <- df %>% as.data.frame()
-colnames(df) <- c("Text")
-df <- df %>% dplyr::filter(Text != "" & Text != "Back to Top") %>% 
-  mutate(abriviation = str_sub(.$Text, start = -3, end = -1),
-         Text = str_sub(Text, start = 1, end = -7))
-
+# Read in Natural Earth populate places file to get coordinates of cities
+# Many manual naming changes to ensure the webscraped embassies match the
+# spelling in the Natural Earth file
 pop_places <- st_read("Data\\ne_10m_populated_places_simple\\ne_10m_populated_places_simple.shp", crs=4326) %>%
+  dplyr::mutate(nameascii = as.character(nameascii)) %>% 
   dplyr::filter(sov0name != "United States") %>% 
-  dplyr::filter(featurecla != "Populated place")
+  dplyr::mutate(nameascii = 
+                  case_when(
+                    nameascii == "Kobenhavn" ~ "Copenhagen",
+                    nameascii == "Port-of-Spain" ~ "Port of Spain",
+                    nameascii == "Tel Aviv-Yafo" ~ "Tel Aviv",
+                    nameascii == "Basra" ~ "Basrah",
+                    nameascii == "Willemstad" ~ "Curacao",
+                    nameascii == "Az Zahran" ~ "Dhahran",
+                    nameascii == "Dusseldorf" ~ "Düsseldorf",
+                    TRUE ~ nameascii
+                  )) %>% 
+  dplyr::filter(featurecla != "Populated place" | 
+                  nameascii == "Ciudad Juarez" | 
+                  nameascii == "Montreal" |
+                  nameascii == "Calgary" |
+                  nameascii == "Dhahran" | 
+                  nameascii == "Erbil" |
+                  nameascii == "Frankfurt") %>% 
+  dplyr::filter(!(nameascii == "La Paz" & 
+                    (sov0name == "Mexico" | sov0name == "Honduras")))%>% 
+  dplyr::filter(!(nameascii == "Santiago" & 
+                    (sov0name == "Panama" | 
+                       sov0name == "Dominican Republic")))
 
-sf_df <- left_join(pop_places, df, by = c("name" = "Text")) %>% 
-  dplyr::filter(is.na(abriviation) == FALSE)
+# Join the populated places and embassies file
+sf_df <- left_join(pop_places, 
+                   embassies, 
+                   by = c("nameascii" = "Location")) %>% 
+  dplyr::filter(!is.na(Type)) %>% 
+  arrange(nameascii)
 
+# Created a global hex-grid with unique indexes in each hexagon
 sfc_global <- st_bbox(pop_places) %>% st_as_sfc()
-global_grid <- st_make_grid(sfc_global, 5, crs = st_crs(sf_df), square = F)
+global_grid <- st_make_grid(sfc_global, 2, crs = st_crs(sf_df), square = F)
 global_grid <- st_sf(hexid = 1:length(lengths(global_grid)), global_grid)
+
+# Get the intersection between the hexagons and earthquake events
 hexid <- sapply(st_intersects(x = earthquakes, y = global_grid), 
                 function(z) if (length(z)==0) NA_integer_ else z[1])
 earthquakes$hexid <- hexid
+
+# Provide summary statistics for each hexagon
 earthquake_hexsum <- earthquakes %>% group_by(hexid) %>% 
-  summarize(events = n(), Deaths = sum(Deaths, na.rm = T)) %>% 
+  summarize(events = n(),
+            events_maj = sum(Mag >= 7),
+            Deaths = sum(Deaths, na.rm = T),
+            Injuries = sum(Injuries, na.rm = T)) %>% 
   st_set_geometry(NULL)
+
+# Join the initial grid file and the summarized statistics
 quake_grid <- left_join(global_grid, earthquake_hexsum) %>% 
-  replace_na(list(events = 0, Deaths = 0))
+  replace_na(list(events = 0, Deaths = 0, Injuries = 0))
+
+# Calculate risk based on the number of events and deaths in an area
 quake_grid <- quake_grid %>% 
   mutate(risk = log(events + 1) * log(Deaths + 1),
          risk_lvl = ifelse(risk < 5, 1,
-                           ifelse(risk < 15, 2, 3)))
+                           ifelse(risk < 15, 2, 3))) %>% 
+  dplyr::filter(risk > 0)
+
+# More complicated analysis based upon regional effects
+
+
+# Get the intersection between the quake grid and the embassies file
+sf_df$hexid <- sapply(st_intersects(x = sf_df, y = global_grid),
+                        function(z) if (length(z)==0) NA_integer_ else z[1])
+quake_grid_simple <- quake_grid
+st_geometry(quake_grid_simple) <- NULL
+embassy_risk <- left_join(sf_df, quake_grid_simple) %>% 
+  replace_na(list(risk = 0, risk_lvl = 0))
 ```
 
 ## Question 1 - Study Design
 
-Please discuss in detail your approach to this analysis.  Study Design may Include how you defined the question, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience. 
+Please discuss in detail your approach to this analysis.  Study Design may Include how you *defined the question*, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience. 
 
 I defined the question directly from the provided scenario, which asks for 
 a "rapid preliminary analysis of the risk of earthquakes to our overseas
@@ -87,7 +130,6 @@ earthquake risk and know that earthquake prediction has not been very
 succesful, I rely on a straightforward assessment based on the provided 
 earthquake spreadsheet.
 
-
 Although not feasible for this scenario, I would also try to clarify  
 how the person or organizaiton making the request defines risk. I would 
 likely try to communicate with the customer to ensure that I understand 
@@ -105,46 +147,129 @@ reinforced in order to protect the personnel stationed there. Hence, I use
 a relative risk assessment.
 
 I use a spatial approach of analysis to account for variations in the 
-threat level to consulates within counties where the State Department may 
+threat level to consulates within countries where the State Department may 
 have multiple consulates. For example, analyzing data for the United States 
 would provide a much different earthquake risk when comparing, for example, 
 California to Illinois. The spatial methodology allows for accounting for 
 the variation within various countries, particularly those with consulates 
 outside of the capital that may have varying risks to eathquakes. The 
 features in the dataset that are the most complete are the time, the 
-geographic coordinates, the magnitude, and the focal depth
+geographic coordinates, the magnitude, and the focal depth. Otherwise, most
+of the spreadsheet contains missing data for about half of the features.
+
+I decide to compile a geographic index that accounts for the frequency of 
+events and the number of fatalities in the events. One flaw of using the
+provided dataset is that it doesn't account well for low likelihood, high
+impact events. An area
 
 Part of the reason I use a simple index is to ensure that the results are
 easily explicable to a senior policymaker, particularly if they are 
 presented as one simple graphic. Since the prompt suggests the Secretary is
 requesting assessments about multiple natural disasters, I assume that there
-is limited time to discuss the results and the methods that went into them.
+would be limited time to discuss the results and the methods that went into
+the assessment. I presume the assment would likely be discussed with 
+assessments of hurricane risk, flooding risk, and other natural disaster 
+risks.
 
-I chose to do my analysis in R rather than a traditional geospatial tool 
-like ArcGIS or QGIS in order to ensure that any team mates would be able to
-easily access and review the analysis.
 
 ## Question 2 - Data Analysis
 
-What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.   
+*What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.*   
 
+I find that the embassies and consulates most at risk of being affected by 
+an earthquake are along or near the Pacific Coast in Central America and
+east Asia, in southeastern Europe. Port-au-Prince is the most at risk, 
+primarily because of the effect of the 2010 earth quake. Tbilisi and Kabul, 
+are in mountainous areas that experience frequent earthquakes. 
 
+```{r}
+subset_emb <- embassy_risk %>% slice_max(risk, n = 10) %>% 
+  arrange(desc(risk)) %>% 
+  select(name, sov0name, risk, risk_lvl) %>% 
+  rename(City = name, Country = sov0name,
+         Risk = risk, `Risk Level` = risk_lvl )
+st_geometry(subset_emb) <- NULL
 
-```{r pressure, echo=FALSE}
-ggplot()
+kable(subset_emb)
 ```
+
+I consider the primary data quality issue to be the simplicity of the 
+analysis, the geographic scale for the results, and data that is missing for
+before 1970. I decided to utilize a relatively simple model because there 
+was so much categorical data missing within many of the events. Only the 
+coordinates, magnitude, and focal depth were available for almost all of 
+the events. I chose to use the categories for *Deaths* to *Injuries* 
+to measure the human effect of the various events, despite there being 
+many missing values. A quick visualization of the location of events with
+no recorded deaths or injuries showed that they were often over water or
+sparsely populated areas. This gives some assurance that missing data 
+actually reflects a 0 value, rather than simply being missing data.
+
+With more time, I would have liked to define more precise characteristics 
+related to geographic scale. I used a small-scale analysis because of the 
+global scale of analysis and because of the low-precision of the Embassy 
+data that I had. Without a geographic file of embassy locations, I attempted
+various methods to generate a proper file. I tried to acquire the data from
+OpenStreetMap, but it was very imprecise. I decided to scrape a State 
+Department website that listed all the cities globally with an Embassy or
+Consolate and then I joined that file to a geojson file that lists major
+global cities. This method was imprecise and required some manual 
+adjustments. In addition, it means that the analysis is done at the city
+level, rather than at the precise embassy geographic coordinates.
+
+Although a rather minor point, the lack of data before 1970 means that the
+model doesn't account for low likelihood, high impact events in areas where
+fault lines may be overdue for an event. With more time, I would like to 
+coolaborate with academics or colleagues at USGS to discuss how important 
+this factor would be.
+
+I chose to do my analysis in R, primarily using the tidyverse and sf 
+packages. Although I could have done this analysis in ArcGIS, I wanted to
+use R in order to accomodate better reproducability if other analysts 
+wanted to leverage this model. Given that this analysis intended to be 
+preliminary, it is likely to be modified and refined with more time. With
+a desire to work with academic researchers or outside consultants, I find 
+that using GitHub would provide a good way to share the analysis and data
+with other potential collaborators. For example, I have uploaded my files 
+to GitHub if you would like to see the example of the code that I used for
+this document
+(https://github.com/Slushmier/earthquake-data).
+
+I have also come to prefer using R for spatial analysis over ArcGIS as it
+requires more attention to the spatial parameters that are required for an
+analysis.
+
 
 ## Question 3 - Communication
 
-Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words. 
+*Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words.* 
 
+Wherever plausible, I prefer to use a map to display results because of the
+ability to 
+
+```{r}
+ggplot() + 
+  geom_sf(data = countries) +
+  geom_sf(data = quake_grid, aes(fill = risk_lvl), alpha = 0.2) +
+  geom_sf(data = embassy_risk, aes(color = risk_lvl))
+
+### Check that zero death & injury events are remote
+# earthquakes_sub <- earthquakes %>% 
+#  dplyr::filter(is.na(Deaths) & is.na(Injuries))
+# ggplot() + geom_sf(data = countries) + 
+#  geom_sf(data = earthquakes_sub, aes(color = Mag))
+```
 
 
 ## Question 4 - Validation
 
-Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work. 
+*Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work.* 
 
 Validation can be difficult when you are unclear about the tool or 
 methodology that may be used by another analyst. I choose to put my analysis
 on GitHub (https://github.com/Slushmier/earthquake-data) so that anyone 
 reviewing the 
+
+I could also compare the results to their alignment with similar academic
+models. For example, I validated my results against the Global Seismic 
+Hazard Assessment program's results.
