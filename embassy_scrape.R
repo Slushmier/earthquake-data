@@ -53,10 +53,12 @@ df_all_2 <- df_all %>%
   mutate(Country = str_to_title(.$Country)) %>% 
   mutate(Location = case_when(
     Location == "Somalia" ~ "Mogadishu",
-    Location == "in Zagreb" ~ "Zagreb",
+    Country == "Croatia" ~ "Zagreb",
+    Country == "Holy See" ~ "Vatican City",
     Location == "Austria" ~ "Vienna",
     Location == "Finland" ~ "Helsinki",
     Location == "Guadalajar" ~ "Guadalajara",
+    Location == "Tonga" ~ "Suva",
     TRUE ~ Location
   ))
   
