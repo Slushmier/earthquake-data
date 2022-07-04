@@ -1,5 +1,5 @@
 ---
-title: "Writen Assignment Answers"
+title: "Written Assignment Answers"
 author: "Adam Armeier"
 date: "6/26/2022"
 output:
@@ -160,16 +160,16 @@ succesful, I rely on a straightforward assessment based on the provided
 earthquake spreadsheet.
 
 Although not feasible for this scenario, I would also try to clarify  
-how the person or organizaiton making the request defines risk. I would 
+how the person or organization making the request defines risk. I would 
 likely try to communicate with the customer to ensure that I understand 
 their desired output. For example, do they perceive the risk of earthquakes 
-to simply be a risk of an earthquake event occuring, or does it also need 
+to simply be a risk of an earthquake event occurring, or does it also need 
 to account for factors such as the capabilities of a host nation to provide 
 disaster relief support, the ability of the Department of State or other US 
 government support entities to access the mission in an emergency, or the 
 risk of factors like tidal waves that may result from an earthquakes? I 
 also looked at the Joint Strategic Plan for guidance on the type of risk 
-assessement mentioned. Given the text from the prompt and Performance Goal 
+assessment mentioned. Given the text from the prompt and Performance Goal 
 4.3.4 to "protect personnel through advanced building" I assume the goal is
 to prioritize which missions are most at risk and may need to be rebuilt or
 reinforced in order to protect the personnel stationed there. Hence, I use
@@ -181,13 +181,13 @@ have multiple consulates. For example, analyzing data for the United States
 would provide a much different earthquake risk when comparing, for example, 
 California to Illinois. The spatial methodology allows for accounting for 
 the variation within various countries, particularly those with consulates 
-outside of the capital that may have varying risks to eathquakes. The 
+outside of the capital that may have varying risks to earthquakes. The 
 features in the dataset that are the most complete are the time, the 
 geographic coordinates, the magnitude, and the focal depth. Otherwise, most
 of the spreadsheet contains missing data for about half of the features.
 
 I initially compiled a geographic index that accounts for the frequency of 
-events within certian areas and the number of fatalities that occurred 
+events within certain areas and the number of fatalities that occurred 
 because of the events reported. One flaw of using the provided dataset is 
 that it doesn't account well for low likelihood, e.g. a 1 in 500 year event.
 The 52 years of earthquake data is definitely a good guide for extreme 
@@ -215,9 +215,9 @@ the data analysis.
 
 I find that the embassies and consulates most at risk of being affected by 
 an earthquake are along or near a Pacific Coast or in areas of historically 
-bad earthquakes. Manilla is identifid as the most at risk, followed by 
+bad earthquakes. Manila is identified as the most at risk, followed by 
 Quito, and Port-au-Prince. Port-au-Prince ranks so high because of how 
-devestating the 2010 earthquake was.
+devastating the 2010 earthquake was.
 
 ```{r echo=FALSE}
 subset_emb <- embassy_risk %>% slice_max(risk, n = 10) %>% 
@@ -243,7 +243,7 @@ or in sparsely populated areas. This provided some assurance that the
 missing data actually reflected a 0 value, rather than simply being missing
 or uncollected data.
 
-I decided against using nay of hte measures of economic damage, or loss of
+I decided against using nay of the measures of economic damage, or loss of
 houses due to concerns about the number of missing attributes and concerns
 that the global data collection process across various countries and time
 would lead to inconsistently quantified data within the dataset.
@@ -257,7 +257,7 @@ compiled an index based on on the number of deaths from all events in the
 dataset and the number of earthquakes in the same areas in the dataset. 
 However, one of the initial problems I recognized with this form of analysis
 was that example of the modified areal unit problem, where the level of 
-aggregration of point events into polygon areas can create results that
+aggregation of point events into polygon areas can create results that
 reflect the data aggregation process more than the real-world phenomenon
 that we're trying to explain through the data analysis.
 
@@ -269,32 +269,32 @@ relatively low in my initial index because the major 2015 earthquake that
 affected the city was fairly distant from the city and the Embassy within
 it, despite having a major effect. By adding a measure of regional 
 clustering, the Embassy was in the top 15, which seemed to provide a clearer
-reflextion of what had happened.
+reflection of what had happened.
 
 To measure the regional clustering, I use the Getis-Ord G* statistic for
 measuring local spatial autocorrelation. The statistic provides a z-score
 of the likelihood that an area is in a nonrandom clustered area for a 
 specific phenomenon. For this exercise, the statistic reflects the 
 likelihood that a spatial hexagon, together with its six neighbors, 
-respresent a cluster of high seismic activity. This way, even an area with 
+represent a cluster of high seismic activity. This way, even an area with 
 no measured seismic activity because of random variation, will still be 
 reflected as being in a cluster of high activity if its neighbors show 
 high levels.
 
 Getting the locations of the Embassies and Consulates required a couple
 false starts before developing a dataset to support this analysis by 
-using some webscraped data. Initially, I tried to acquire the geographic
+using some web-scraped data. Initially, I tried to acquire the geographic
 data for Embassies and Consulates by going to OpenStreetMap and getting the
 data for US diplomatic buildings. However, the final result from this 
 source was missing over half of the Embassies and Consulates. After that, I 
-decided to use a webscraping tool in R, the rvest package, to get the data
+decided to use a web-scraping tool in R, the rvest package, to get the data
 for active Embassies and Consulates listed on the https://www.usembassy.gov/
 website. Since all the Embassies and Consulates aren't listed on the main 
 page, I scraped a list of unique URLs for each country and then scraped the
 names of each Embassy and Consulate. I didn't gather the specific address
-for each location as I don't personnaly have access to a global address 
-geocoding service. With the list of unique Embassies and Consoluates, I 
-combined that datasit with a Natural Earth dataset for the coordinates of
+for each location as I don't personally have access to a global address 
+geocoding service. With the list of unique Embassies and Consulates, I 
+combined that dataset with a Natural Earth dataset for the coordinates of
 global cities and towns. Most of the locations were easily found, though
 I had to manually match some of the listed attributes in both of the 
 datasets.
@@ -308,14 +308,14 @@ set if working on a similar project for the State Department.
 
 Finally, I chose to do my analysis in R, primarily using the tidyverse and 
 sf packages. Although I could have done this analysis in ArcGIS, I wanted to
-use R in order to accomodate better reproducability if other analysts 
+use R in order to accommodate better reproducability if other analysts 
 (myself included) wanted to leverage this type of model for other
 risk assessments. Given that this analysis is intended to be 
 preliminary, it is likely to be modified and refined with more time. I also
 find that R is generally more stable and faster to use than a more
 traditional geospatial program. In addition, with more time on this project,
 I would want to work with academic researchers or outside consultants that 
-have a more hollistic understanding of quantifying earthquake risk. I find 
+have a more holistic understanding of quantifying earthquake risk. I find 
 that using GitHub provides a good way to share the analysis and data
 with other potential collaborators. For example, I have uploaded my files 
 to GitHub if you would like to see the example of the code that I used for
@@ -323,7 +323,7 @@ this document (https://github.com/Slushmier/earthquake-data).
 
 ## Question 3 - Communication
 
-*Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words.* 
+**Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words.** 
 
 Wherever plausible, I try to add a visual element in order to frame a 
 conversation with an executive. For this particular instance, I provided a
@@ -331,7 +331,7 @@ map that showed the highest risk Embassies or Consulates, and the relative
 global risk that I assessed from the initial earthquake file. I would try
 to provide a graphic that shows the results provided in a graphic form.
 
-```{r echo=FALSE, warning=FALSE}
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7.5}
 library(ggrepel)
 
 # Natural Earth country boundaries
@@ -394,19 +394,19 @@ ggplot() +
 We assessed the relative risk of earthquakes for all U.S. Embassies and 
 Consulates. The highest risk was found to exist for five missions in Latin
 America close to the Pacific Coast; Port-au-Prince, Haiti; Mexico City, 
-Mexico; Tblisi, Georgia; Peshawar, Pakistan; Manila, Philipines; and 
-Beijing, China. We modelled global earthquake risk based on the historic
+Mexico; Tbilisi, Georgia; Peshawar, Pakistan; Manila, Philippines; and 
+Beijing, China. We modeled global earthquake risk based on the historic
 presence of high magnitude earthquakes, the historic presence of earthquakes
 with high casualties, and regions of high seismic activity. We created a 
 combined risk assessment for each area of the world based on these three
-primary factors. Of the 240 global embassies and consolates we analyzed,
+primary factors. Of the 240 global embassies and consulates we analyzed,
 seven were in areas of high earthquake risk, 15 were in areas of 
 moderate risk, 18 were in areas of low risk, and 200 were in areas of 
 minimal risk.
 
 ## Question 4 - Validation
 
-*Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work.* 
+**Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work.** 
 
 If I don't know the software of methodology that a team member has used, I
 would most likely ask questions about the research design that was used to 
