@@ -3,8 +3,8 @@ title: "Writen Assignment Answers"
 author: "Adam Armeier"
 date: "6/26/2022"
 output:
-  html_document: default
   word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -118,9 +118,9 @@ quake_grid$local_i <- as.numeric(localmoran(quake_grid$events, grid_w)[,4])
 quake_grid <- quake_grid %>% 
   mutate(risk = scale(log(events_maj+1)) + scale(log(Deaths + 1)) +
            local_g,
-         risk_lvl = ifelse(risk < 5, 1,
-                           ifelse(risk < 15, 2, 3))) %>% 
-  dplyr::filter(risk >= 0)
+         risk_lvl = ifelse(risk < 10, 1,
+                           ifelse(risk < 20, 2, 3))) %>% 
+  dplyr::filter(risk >= 5)
 
 # Get the intersection between the quake grid and the embassies file
 sf_df$hexid <- sapply(st_intersects(x = sf_df, y = global_grid),
@@ -128,12 +128,16 @@ sf_df$hexid <- sapply(st_intersects(x = sf_df, y = global_grid),
 quake_grid_simple <- quake_grid
 st_geometry(quake_grid_simple) <- NULL
 embassy_risk <- left_join(sf_df, quake_grid_simple) %>% 
-  replace_na(list(risk = 0, risk_lvl = 0))
+  replace_na(list(risk = 0, risk_lvl = 0)) %>% 
+  rename(`Mission Risk` = risk_lvl)
+
+quake_grid <- quake_grid %>% rename(`Area Risk` = risk_lvl) %>% 
+  mutate(`Area Risk` = as.factor(`Area Risk`))
 ```
 
 ## Question 1 - Study Design
 
-*Please discuss in detail your approach to this analysis.  Study Design may Include how you *defined the question*, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience.* 
+**Please discuss in detail your approach to this analysis.  Study Design may Include how you defined the question, data, methodology, and analytic design or your methodology to data exploration and explanation, the assumptions taken, how you would ensure the integrity and accuracy of any results, and any considerations for communication to a varied audience.** 
 
 I defined the question directly from the provided scenario, which asks for 
 a "rapid preliminary analysis of the risk of earthquakes to our overseas
@@ -207,7 +211,7 @@ the data analysis.
 
 ## Question 2 - Data Analysis
 
-*What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.*   
+**What are key findings found in your analysis? Which embassies are most at risk? Are there groups of embassies that share similar features or profiles with respect to earthquake risk? Were there outliers or areas with data quality issues? Please describe how you conducted your data analysis, including which tools you used, why you chose them, and data preprocessing steps you took, and justify the results of your analysis.**   
 
 I find that the embassies and consulates most at risk of being affected by 
 an earthquake are along or near a Pacific Coast or in areas of historically 
@@ -215,12 +219,12 @@ bad earthquakes. Manilla is identifid as the most at risk, followed by
 Quito, and Port-au-Prince. Port-au-Prince ranks so high because of how 
 devestating the 2010 earthquake was.
 
-```{r}
-subset_emb <- embassy_risk %>% slice_max(risk, n = 20) %>% 
+```{r echo=FALSE}
+subset_emb <- embassy_risk %>% slice_max(risk, n = 10) %>% 
   arrange(desc(risk)) %>% 
-  select(name, sov0name, risk, risk_lvl) %>% 
+  select(name, sov0name, risk, `Mission Risk`) %>% 
   rename(City = name, Country = sov0name,
-         Risk = risk, `Risk Level` = risk_lvl )
+         Risk = risk, `Risk Level` = `Mission Risk` )
 st_geometry(subset_emb) <- NULL
 
 kable(subset_emb)
@@ -305,36 +309,79 @@ set if working on a similar project for the State Department.
 Finally, I chose to do my analysis in R, primarily using the tidyverse and 
 sf packages. Although I could have done this analysis in ArcGIS, I wanted to
 use R in order to accomodate better reproducability if other analysts 
-(myself included) wanted to leverage this or a similar model forother
+(myself included) wanted to leverage this type of model for other
 risk assessments. Given that this analysis is intended to be 
-preliminary, it is likely to be modified and refined with more time. With
-a desire to work with academic researchers or outside consultants, I find 
-that using GitHub would provide a good way to share the analysis and data
+preliminary, it is likely to be modified and refined with more time. I also
+find that R is generally more stable and faster to use than a more
+traditional geospatial program. In addition, with more time on this project,
+I would want to work with academic researchers or outside consultants that 
+have a more hollistic understanding of quantifying earthquake risk. I find 
+that using GitHub provides a good way to share the analysis and data
 with other potential collaborators. For example, I have uploaded my files 
 to GitHub if you would like to see the example of the code that I used for
-this document
-(https://github.com/Slushmier/earthquake-data).
-
-I have also come to prefer using R for spatial analysis over ArcGIS as it
-requires more attention to the spatial parameters that are required for an
-analysis.
+this document (https://github.com/Slushmier/earthquake-data).
 
 ## Question 3 - Communication
 
 *Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words.* 
 
-Wherever plausible, I prefer to use a map to display results because of the
-ability to 
+Wherever plausible, I try to add a visual element in order to frame a 
+conversation with an executive. For this particular instance, I provided a
+map that showed the highest risk Embassies or Consulates, and the relative
+global risk that I assessed from the initial earthquake file. I would try
+to provide a graphic that shows the results provided in a graphic form.
 
-```{r}
+```{r echo=FALSE, warning=FALSE}
+library(ggrepel)
+
 # Natural Earth country boundaries
 countries <- st_read("Data\\ne_110m_admin_0_countries\\ne_110m_admin_0_countries.shp", crs = 4326)
 
-ggplot() + 
-  geom_sf(data = countries) +
-  geom_sf(data = quake_grid, aes(fill = risk_lvl), alpha = 0.2) +
-  geom_sf(data = embassy_risk, aes(color = risk_lvl))
+plot_embassy <- embassy_risk %>% 
+  select(nameascii, risk, `Mission Risk`) %>% 
+  mutate(icon_size = `Mission Risk`) %>% 
+  mutate(`Mission Risk` = case_when(
+    `Mission Risk` == 0 ~ "Minimal",
+    `Mission Risk` == 1 ~ "Low",
+    `Mission Risk` == 2 ~ "Moderate",
+    `Mission Risk` == 3 ~ "High")) %>% 
+  mutate(shape = 18)
 
+top_10_embassies <- embassy_risk %>% 
+  arrange(desc(risk)) %>% 
+  slice_max(order_by = risk, n = 10) %>% 
+  mutate(shape = 19)
+  
+ggplot() + 
+  geom_sf(data = countries, fill = "lightgray", alpha = 0.2) +
+  geom_sf(data = quake_grid,
+          aes(fill = `Area Risk`),
+          alpha = 0.5, color = NA) +
+  scale_fill_brewer(name = "Area Earthquake Risk", 
+                    breaks = c(1, 2, 3),
+                    labels = c("Low", "Moderate", "High"),
+                    palette = "YlOrRd") +
+  geom_sf(data = plot_embassy, aes(shape = as.factor(shape)),
+          size = 0.75, alpha = 0.8, color = "black",
+          name = "embassy") +
+  geom_sf(data = top_10_embassies, aes(shape = as.factor(shape)),
+          size = 2, alpha = 0.9, color = "dark red") +
+  ggrepel::geom_text_repel(data = top_10_embassies,
+    aes(label = nameascii, geometry = geometry),
+    stat = "sf_coordinates", min.segment.length = 0,
+    bg.color = "white", bg.r = 0.25, alpha = 0.8, size = 3) +
+  theme_minimal() +
+  ggtitle("Highest Earthquake Risk for Embassies and Consulates") +
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+  scale_shape_manual(name = NULL, values = c(19, 18),
+                     labels = c("Highest Risk Missions", "Other Missions"),
+                     guide = guide_legend(override.aes =                                             list(color = c("dark red", "black"),
+                                                                                                          size = c(2, 0.75),
+                              shape = c(19, 18)  ))) +
+  xlab(NULL) + ylab(NULL)
+  
+  
 ### Check that zero death & injury events are remote
 # earthquakes_sub <- earthquakes %>% 
 #  dplyr::filter(is.na(Deaths) & is.na(Injuries))
@@ -342,16 +389,42 @@ ggplot() +
 #  geom_sf(data = earthquakes_sub, aes(color = Mag))
 ```
 
+**Executive Summary**
+
+We assessed the relative risk of earthquakes for all U.S. Embassies and 
+Consulates. The highest risk was found to exist for five missions in Latin
+America close to the Pacific Coast; Port-au-Prince, Haiti; Mexico City, 
+Mexico; Tblisi, Georgia; Peshawar, Pakistan; Manila, Philipines; and 
+Beijing, China. We modelled global earthquake risk based on the historic
+presence of high magnitude earthquakes, the historic presence of earthquakes
+with high casualties, and regions of high seismic activity. We created a 
+combined risk assessment for each area of the world based on these three
+primary factors. Of the 240 global embassies and consolates we analyzed,
+seven were in areas of high earthquake risk, 15 were in areas of 
+moderate risk, 18 were in areas of low risk, and 200 were in areas of 
+minimal risk.
 
 ## Question 4 - Validation
 
 *Hypothetically, if a member of your team completed this work using software or methodology in which you are not proficient, describe how you would validate their work.* 
 
-Validation can be difficult when you are unclear about the tool or 
-methodology that may be used by another analyst. I choose to put my analysis
-on GitHub (https://github.com/Slushmier/earthquake-data) so that anyone 
-reviewing the 
+If I don't know the software of methodology that a team member has used, I
+would most likely ask questions about the research design that was used to 
+try and analyze the particular question. Asking questions such as what the
+main research question was, why a particular dataset was used for that 
+research question, and why an analyst used a particular software or 
+methodology would help to provide some validation about the work that was
+done.
 
-I could also compare the results to their alignment with similar academic
-models. For example, I validated my results against the Global Seismic 
-Hazard Assessment program's results.
+If the analytic methodology were particularly complex, I would also ask 
+about data processing, such as accounting for missing values, inconsistent 
+annotations, outliers, and potential duplicated results. If the method of 
+analysis is particularly complex for a relatively simple issue, I would 
+probably ask about the use of a simulated dataset to validate that the 
+method of analysis produced logical results.
+
+Hopefully much of the code would be available in a git repository and, if 
+so, I could skim the code for any obvious issue, or try to send the code to 
+a colleague I know that might be more familiar with the software or process.
+I would also do a quick internet search for any other similar analyses, 
+simply to ensure that any results make logical sense.
