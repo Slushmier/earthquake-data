@@ -222,7 +222,7 @@ an earthquake are along or near a Pacific Coast or in areas of historically
 frequent, high-magnitude earthquakes. Manila is identified as the most at
 risk, followed by Quito, and Port-au-Prince. Port-au-Prince ranks so high
 because of how devastating Haiti's 2010 earthquake was. The top 11 at risk 
-U.S. embassies and consulates are presented at the top of the net page.
+U.S. embassies and consulates are presented below.
 
 ```{r echo=FALSE}
 subset_emb <- embassy_risk %>% slice_max(risk, n = 10) %>% 
@@ -327,17 +327,16 @@ consultants that have a more holistic understanding of quantifying
 earthquake risk. I find that using GitHub provides a good way to share the 
 analysis and data with other potential collaborators. For example, I have 
 uploaded my files for this analysis to GitHub for backup and review 
-(https://github.com/Slushmier/earthquake-data). 
+(https://github.com/Slushmier/earthquake-data). The markdown file for this 
+document is also available at (https://github.com/Slushmier/earthquake-data/blob/main/analysis-file.Rmd)
 
 ## Question 3 - Communication
 
 **Please describe in detail how you would communicate your results to a diverse, non-technical audience. Provide an executive summary of your analysis for senior management which does not exceed 500 words.** 
 
-Wherever plausible, I try to add a visual element in order to frame a 
-conversation with an executive. For this particular instance, I provided a
-map that showed the highest risk Embassies or Consulates, and the relative
-global risk that I assessed from the initial earthquake file. I would try
-to provide a graphic that shows the results provided in a graphic form.
+Wherever plausible, I try to add a visual element in order to frame a conversation with an executive or non-technical audience. This allows me to frame a presentation on the results of the analysis, rather than an explanation of the corresponding processes that went into conducting the analysis. Particularly if presenting a more technical analysis involving regression or classification, I try to present the relative change that might take effect if a specific treatment is conducted. I make sure to be prepared in case anyone asks about the methodology employed, but have tended to find that most non-technical audiences are more interested in the result of the analysis and may only want more information on the methodology if suspicious of the results.
+
+For this particular example, I created a map in R using the ggplot2 and sf packages. The graphic shows the locations of the highest risk U.S. Embassies or Consulates, and the relative global risk that I assessed using the initial earthquake file. I do this to show the main takeaways and allow the audience the ability to interpret the modelled risk if they’re interested in a particular area not highlighted on the map. I use red to try to ensure the main cities are apparent, without overwhelming the map. I also opt to use a static graphic, rather than a web or Tableau dashboard to ensure the result is likely to work on most computers and behind most firewalls. I would present the following map in a one-page memo with the accompanying Executive Summary below that outlines the results and provides a high-level overview of the analysis.
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7.5}
 library(ggrepel)
@@ -403,18 +402,7 @@ ggplot() +
 
 **Executive Summary**
 
-We assessed the relative risk of earthquakes for all U.S. Embassies and 
-Consulates. The highest risk was found to exist for five missions in Latin 
-America close to the Pacific Coast; Port-au-Prince, Haiti; Mexico City, 
-Mexico; Tbilisi, Georgia; Peshawar, Pakistan; Manila, Philippines; and 
-Beijing, China. We modeled global earthquake risk based on the historic 
-presence of high magnitude earthquakes, the historic presence of 
-earthquakes with high fatalities, and presence in regions of high seismic 
-activity. We created a combined risk assessment for each area of the world 
-based on these three factors. Of the 240 global embassies and consulates 
-we analyzed, seven were in areas of high earthquake risk, 15 were in areas 
-of moderate risk, 18 were in areas of low risk, and 200 were in areas of 
-minimal risk.
+We assessed the relative risk of earthquakes for all U.S. Embassies and Consulates. The highest risk was found to exist for five missions in Latin America close to the Pacific Coast; Port-au-Prince, Haiti; Mexico City, Mexico; Tbilisi, Georgia; Peshawar, Pakistan; Manila, Philippines; and Beijing, China. We modeled global earthquake risk based on the historic presence of high magnitude earthquakes, the historic presence of earthquakes with high fatalities, and presence in regions of high seismic activity. We created a combined risk assessment for each area of the world based on these three factors. Of the 240 global embassies and consulates we analyzed, seven were in areas of high earthquake risk, 15 were in areas of moderate risk, 18 were in areas of low risk, and 200 were in areas of minimal risk.
 
 ## Question 4 - Validation
 
